@@ -87,10 +87,10 @@ def fpr(
             yc1 = yo4 + radius*np.sin(theta_o)
             L_offset = (-do*(1-(outputs+1)/2)/Ra-theta_term)*radius
             if alpha <= np.pi/2:
-                xo5 = xc1 + radius*np.cos(alpha+theta_offset)
-                yo5 = yc1 - radius*np.sin(alpha+theta_offset)
-                xo6 = xo5 + L_offset*np.sin(alpha)
-                yo6 = yo5 + L_offset*np.cos(alpha)
+                xo5 = xc1 + radius*np.cos(np.pi/2-alpha+theta_offset)
+                yo5 = yc1 - radius*np.sin(np.pi/2-alpha+theta_offset)
+                xo6 = xo5 + L_offset*np.sin(np.pi/2-alpha)
+                yo6 = yo5 + L_offset*np.cos(np.pi/2-alpha)
             else:
                 xo5 = xc1 + radius*np.cos(alpha-np.pi/2+theta_offset)
                 yo5 = yc1 + radius*np.sin(alpha-np.pi/2+theta_offset)
@@ -100,7 +100,7 @@ def fpr(
                 radius=radius,
                 width=wa,
                 angle_start=np.rad2deg(-theta_o),
-                angle_stop=np.rad2deg(-alpha) if alpha <= np.pi/2 else np.rad2deg(alpha-np.pi/2),
+                angle_stop=np.rad2deg(-(np.pi/2-alpha)) if alpha <= np.pi/2 else np.rad2deg(alpha-np.pi/2),
                 angle_resolution=0.5,
                 center=(xc1, yc1),
                 cross_section=cross_section
@@ -110,10 +110,10 @@ def fpr(
             yc1 = yo4 + radius*np.sin(-theta_o)
             L_offset = (-do*(1-(outputs+1)/2)/Ra+theta_term)*radius
             if alpha <= np.pi/2:
-                xo5 = xc1 - radius*np.cos(alpha-theta_offset)
-                yo5 = yc1 + radius*np.sin(alpha-theta_offset)
-                xo6 = xo5 + L_offset*np.sin(alpha)
-                yo6 = yo5 + L_offset*np.cos(alpha)
+                xo5 = xc1 - radius*np.cos(np.pi/2-alpha-theta_offset)
+                yo5 = yc1 + radius*np.sin(np.pi/2-alpha-theta_offset)
+                xo6 = xo5 + L_offset*np.sin(np.pi/2-alpha)
+                yo6 = yo5 + L_offset*np.cos(np.pi/2-alpha)
             else:
                 xo5 = xc1 - radius*np.cos(alpha-np.pi/2-theta_offset)
                 yo5 = yc1 - radius*np.sin(alpha-np.pi/2-theta_offset)
@@ -122,7 +122,7 @@ def fpr(
             ring1 = ring_arc(
                 radius=radius,
                 width=wa,
-                angle_start=np.rad2deg(np.pi-alpha) if alpha <= np.pi/2 else np.rad2deg(np.pi/2+alpha),
+                angle_start=np.rad2deg(np.pi/2+alpha) if alpha <= np.pi/2 else np.rad2deg(np.pi/2+alpha),
                 angle_stop=np.rad2deg(np.pi-theta_o),
                 angle_resolution=0.5,
                 center=(xc1, yc1),
@@ -217,5 +217,5 @@ def fpr(
 
 
 if __name__ == "__main__":
-    FPR = fpr(inputs=16, rotation_angle=60)
+    FPR = fpr(inputs=16, rotation_angle=0)
     FPR.show()
