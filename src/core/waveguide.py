@@ -25,9 +25,10 @@ def waveguide(
     )
 
     c = gf.Component()
-    wg_ref = c << wg
+    wg_ref = c.add_ref(wg)
     wg_ref.move(start)
     wg_ref.rotate(angle, center=start)
+
     return c
 
 

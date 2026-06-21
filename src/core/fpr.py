@@ -11,21 +11,20 @@ from gdsfactory.typings import CrossSectionSpec
 def fpr(
     inputs: int = 1,
     outputs: int = 30,
-    wi: float = 1.0,
-    wo: float = 1.0,
+    w0: float = 1.0,
+    wi: float = 3.0,
     wa: float = 3.0,
-    di: float = 3.0,
-    do: float = 3.0,
-    gi: float = 0.2,
-    go: float = 0.2,
+    di: float = 4.0,
+    do: float = 4.0,
+    gap: float = 0.2,
     lti: float = 20.0,
-    lto1: float = 20.0,
+    lto: float = 20.0,
     mi: float = 2.0,
     mo: float = 2.0,
-    lwo: float = 10.0,
-    lto2: float = 20.0,
+    ls: float = 10.0,
+    ltt: float = 20.0,
     radius: float = 50.0,
-    Ra: float = 100.0,
+    Ra: float = 150.0,
     center: tuple[float, float] = (0.0, 0.0),
     rotation_angle: float = 90.0,
     scale: float = 1.2,
@@ -36,19 +35,18 @@ def fpr(
     Args:
         inputs (int, optional): number of inputs.
         outputs (int, optional): number of outputs.
-        wi (float, optional): width of the input waveguides.
-        wo (float, optional): width of the output waveguides.
+        w0 (float, optional): width of single-mode waveguide.
+        wi (float, optional): width of input aperture.
         wa (float, optional): width of the array waveguides.
         di (float, optional): spacing of the input tapers.
         do (float, optional): spacing of the output tapers.
-        gi (float, optional): gap between input tapers.
-        go (float, optional): gap between output tapers.
+        gap (float, optional): Gap width between waveguide apertures.
         lti (float, optional): length of the input tapers.
-        lto1 (float, optional): length of the output tapers.
+        lto (float, optional): length of the output tapers.
         mi (float, optional): m of input curved tapers.
         mo (float, optional): m of output curved tapers.
-        lwo (float, optional): length of the single mode waveguides.
-        lto2 (float, optional): length of the transition waveguides.
+        ls (float, optional): length of the single mode waveguides.
+        ltt (float, optional): length of the transition waveguides.
         radius (float, optional): radius of corrected bend waveguides.
         Ra (float, optional): radius of Rowland circle (length of FPR).
         center (tuple[float, float], optional): center of Rowland circle.
@@ -61,69 +59,74 @@ def fpr(
     assert layer is not None
     alpha = np.deg2rad(rotation_angle) # rotation theta
     
-    FPR = gf.Component()
+    c = gf.Component()
 
     pto = []
-    w = do-go # temp w
+    ports = []
     length_offset = 0.002
     theta_offset = 1e-4
+    half_pi = np.pi/2
+    cx, cy = center
     for i in range(1, outputs+1): # draw output tapers
         theta_term = -do*(i-(outputs+1)/2)/Ra
         theta_o =  theta_term + (np.pi/2-alpha)
-        xo1 = Ra*np.sin(theta_o) + center[0]
-        yo1 = Ra*np.cos(theta_o) + center[1]
-        # xo2 = (Ra+lto1)*np.sin(theta_o) + center[0]
-        # yo2 = (Ra+lto1)*np.cos(theta_o) + center[1]
-        xo2_offset = (Ra+lto1-length_offset)*np.sin(theta_o) + center[0]
-        yo2_offset = (Ra+lto1-length_offset)*np.cos(theta_o) + center[1]
-        xo3 = (Ra+lto1+lwo)*np.sin(theta_o) + center[0]
-        yo3 = (Ra+lto1+lwo)*np.cos(theta_o) + center[1]
-        xo3_offset = (Ra+lto1+lwo+length_offset)*np.sin(theta_o) + center[0]
-        yo3_offset = (Ra+lto1+lwo+length_offset)*np.cos(theta_o) + center[1]
-        xo4 = (Ra+lto1+lwo+lto2)*np.sin(theta_o) + center[0]
-        yo4 = (Ra+lto1+lwo+lto2)*np.cos(theta_o) + center[1]
+        st = np.sin(theta_o)
+        ct = np.cos(theta_o)
+
+        xo1 = Ra*st + cx
+        yo1 = Ra*ct + cy
+        # xo2 = (Ra+lto1)*st + cx
+        # yo2 = (Ra+lto1)*ct + cy
+        xo2_offset = (Ra+lto-length_offset)*st + cx
+        yo2_offset = (Ra+lto-length_offset)*ct + cy
+        xo3 = (Ra+lto+ls)*st + cx
+        yo3 = (Ra+lto+ls)*ct + cy
+        xo3_offset = (Ra+lto+ls+length_offset)*st + cx
+        yo3_offset = (Ra+lto+ls+length_offset)*ct + cy
+        xo4 = (Ra+lto+ls+ltt)*st + cx
+        yo4 = (Ra+lto+ls+ltt)*ct + cy
         if theta_term > 0:
-            xc1 = xo4 - radius*np.cos(theta_o)
-            yc1 = yo4 + radius*np.sin(theta_o)
+            xc1 = xo4 - radius*ct
+            yc1 = yo4 + radius*st
             L_offset = (-do*(1-(outputs+1)/2)/Ra-theta_term)*radius
-            if alpha <= np.pi/2:
-                xo5 = xc1 + radius*np.cos(np.pi/2-alpha+theta_offset)
-                yo5 = yc1 - radius*np.sin(np.pi/2-alpha+theta_offset)
-                xo6 = xo5 + L_offset*np.sin(np.pi/2-alpha)
-                yo6 = yo5 + L_offset*np.cos(np.pi/2-alpha)
+            if alpha <= half_pi:
+                xo5 = xc1 + radius*np.cos(half_pi-alpha+theta_offset)
+                yo5 = yc1 - radius*np.sin(half_pi-alpha+theta_offset)
+                xo6 = xo5 + L_offset*np.sin(half_pi-alpha)
+                yo6 = yo5 + L_offset*np.cos(half_pi-alpha)
             else:
-                xo5 = xc1 + radius*np.cos(alpha-np.pi/2+theta_offset)
-                yo5 = yc1 + radius*np.sin(alpha-np.pi/2+theta_offset)
-                xo6 = xo5 - L_offset*np.sin(alpha-np.pi/2)
-                yo6 = yo5 + L_offset*np.cos(alpha-np.pi/2)
+                xo5 = xc1 + radius*np.cos(alpha-half_pi-theta_offset)
+                yo5 = yc1 + radius*np.sin(alpha-half_pi-theta_offset)
+                xo6 = xo5 - L_offset*np.sin(alpha-half_pi)
+                yo6 = yo5 + L_offset*np.cos(alpha-half_pi)
             ring1 = ring_arc(
                 radius=radius,
                 width=wa,
                 angle_start=np.rad2deg(-theta_o),
-                angle_stop=np.rad2deg(-(np.pi/2-alpha)) if alpha <= np.pi/2 else np.rad2deg(alpha-np.pi/2),
+                angle_end=np.rad2deg(-(half_pi-alpha)) if alpha <= half_pi else np.rad2deg(alpha-half_pi),
                 angle_resolution=0.5,
                 center=(xc1, yc1),
                 cross_section=cross_section
             )
         else:
-            xc1 = xo4 + radius*np.cos(-theta_o)
-            yc1 = yo4 + radius*np.sin(-theta_o)
+            xc1 = xo4 + radius*ct
+            yc1 = yo4 - radius*st
             L_offset = (-do*(1-(outputs+1)/2)/Ra+theta_term)*radius
-            if alpha <= np.pi/2:
-                xo5 = xc1 - radius*np.cos(np.pi/2-alpha-theta_offset)
-                yo5 = yc1 + radius*np.sin(np.pi/2-alpha-theta_offset)
-                xo6 = xo5 + L_offset*np.sin(np.pi/2-alpha)
-                yo6 = yo5 + L_offset*np.cos(np.pi/2-alpha)
+            if alpha <= half_pi:
+                xo5 = xc1 - radius*np.cos(half_pi-alpha-theta_offset)
+                yo5 = yc1 + radius*np.sin(half_pi-alpha-theta_offset)
+                xo6 = xo5 + L_offset*np.sin(half_pi-alpha)
+                yo6 = yo5 + L_offset*np.cos(half_pi-alpha)
             else:
-                xo5 = xc1 - radius*np.cos(alpha-np.pi/2-theta_offset)
-                yo5 = yc1 - radius*np.sin(alpha-np.pi/2-theta_offset)
-                xo6 = xo5 - L_offset*np.sin(alpha-np.pi/2)
-                yo6 = yo5 + L_offset*np.cos(alpha-np.pi/2)
+                xo5 = xc1 - radius*np.cos(alpha-half_pi+theta_offset)
+                yo5 = yc1 - radius*np.sin(alpha-half_pi+theta_offset)
+                xo6 = xo5 - L_offset*np.sin(alpha-half_pi)
+                yo6 = yo5 + L_offset*np.cos(alpha-half_pi)
             ring1 = ring_arc(
                 radius=radius,
                 width=wa,
-                angle_start=np.rad2deg(np.pi/2+alpha) if alpha <= np.pi/2 else np.rad2deg(np.pi/2+alpha),
-                angle_stop=np.rad2deg(np.pi-theta_o),
+                angle_start=np.rad2deg(half_pi+alpha) if alpha <= half_pi else np.rad2deg(half_pi+alpha),
+                angle_end=np.rad2deg(np.pi-theta_o),
                 angle_resolution=0.5,
                 center=(xc1, yc1),
                 cross_section=cross_section
@@ -131,10 +134,10 @@ def fpr(
         
         taper_o, pto1, pto2 = curved_taper(
             m=mo,
-            w1=w,
-            w2=wo,
-            length=lto1,
-            rotation_angle=np.rad2deg(np.pi/2-theta_o),
+            w1=do-gap,
+            w2=w0,
+            length=lto,
+            rotation_angle=np.rad2deg(half_pi-theta_o),
             center=(xo1, yo1),
             cross_section=cross_section
         )
@@ -144,15 +147,15 @@ def fpr(
         wg1 = waveguide(
             start=(xo2_offset, yo2_offset), 
             end=(xo3_offset, yo3_offset),
-            width=wo,
+            width=w0,
             cross_section=cross_section
         )
 
         taper1 = taper(
-            w1=wo,
+            w1=w0,
             w2=wa,
-            length=lto2,
-            rotate_angle=np.rad2deg(np.pi/2-theta_o),
+            length=ltt,
+            rotate_angle=np.rad2deg(half_pi-theta_o),
             center=(xo3, yo3),
             cross_section=cross_section
         )
@@ -163,45 +166,45 @@ def fpr(
             width=wa,
             cross_section=cross_section
         )
-        
-        FPR.add_ref(taper_o)
-        FPR.add_ref(wg1)
-        FPR.add_ref(taper1)
-        FPR.add_ref(ring1)
-        FPR.add_ref(wg_offset)
+        ports.append([xo6, yo6])
+
+        c.add_ref(taper_o)
+        c.add_ref(wg1)
+        c.add_ref(taper1)
+        c.add_ref(ring1)
+        c.add_ref(wg_offset)
 
     pti = []
-    w = di-gi # temp w
     for i in range(1, inputs+1):
-        theta_i = di*(i-(inputs+1)/2)/(Ra/2) - (np.pi/2-alpha)
-        xi = (Ra/2)*np.cos(alpha) + (Ra/2)*np.sin(theta_i) + center[0]
-        yi = (Ra/2)*np.sin(alpha) - (Ra/2)*np.cos(theta_i) + center[1]
+        theta_i = di*(i-(inputs+1)/2)/(Ra/2) - (half_pi-alpha)
+        xi = (Ra/2)*np.cos(alpha) + (Ra/2)*np.sin(theta_i) + cx
+        yi = (Ra/2)*np.sin(alpha) - (Ra/2)*np.cos(theta_i) + cy
         taper_i, pti1, pti2 = curved_taper(
-            m=mo,
-            w1=w,
-            w2=wi,
+            m=mi,
+            w1=wi,
+            w2=w0,
             length=lti,
-            rotation_angle=np.rad2deg(-np.pi/2+theta_i),
+            rotation_angle=np.rad2deg(-half_pi+theta_i),
             center=(xi, yi),
             cross_section=cross_section
         )
         pti.append(pti1)
         pti.append(pti2)
-        FPR.add_ref(taper_i)
+        c.add_ref(taper_i)
     
     # Boundary ref points
-    theta_o1 = -do*(1-(outputs+1)/2)/Ra*scale + (np.pi/2-alpha)
-    xbo1 = Ra*np.sin(theta_o1) + center[0]
-    ybo1 = Ra*np.cos(theta_o1) + center[1]
-    theta_o2 = -do*(outputs-(outputs+1)/2)/Ra*scale + (np.pi/2-alpha)
-    xbo2 = Ra*np.sin(theta_o2) + center[0]
-    ybo2 = Ra*np.cos(theta_o2) + center[1]
-    theta_i1 = di*(1-(inputs+1)/2)/(Ra/2)*scale - (np.pi/2-alpha)
-    xbi1 = (Ra/2)*np.cos(alpha) + (Ra/2)*np.sin(theta_i1) + center[0]
-    ybi1 = (Ra/2)*np.sin(alpha) - (Ra/2)*np.cos(theta_i1) + center[1]
-    theta_i2 = di*(inputs-(inputs+1)/2)/(Ra/2)*scale - (np.pi/2-alpha)
-    xbi2 = (Ra/2)*np.cos(alpha) + (Ra/2)*np.sin(theta_i2) + center[0]
-    ybi2 = (Ra/2)*np.sin(alpha) - (Ra/2)*np.cos(theta_i2) + center[1]
+    theta_o1 = -do*(1-(outputs+1)/2)/Ra*scale + (half_pi-alpha)
+    xbo1 = Ra*np.sin(theta_o1) + cx
+    ybo1 = Ra*np.cos(theta_o1) + cy
+    theta_o2 = -do*(outputs-(outputs+1)/2)/Ra*scale + (half_pi-alpha)
+    xbo2 = Ra*np.sin(theta_o2) + cx
+    ybo2 = Ra*np.cos(theta_o2) + cy
+    theta_i1 = di*(1-(inputs+1)/2)/(Ra/2)*scale - (half_pi-alpha)
+    xbi1 = (Ra/2)*np.cos(alpha) + (Ra/2)*np.sin(theta_i1) + cx
+    ybi1 = (Ra/2)*np.sin(alpha) - (Ra/2)*np.cos(theta_i1) + cy
+    theta_i2 = di*(inputs-(inputs+1)/2)/(Ra/2)*scale - (half_pi-alpha)
+    xbi2 = (Ra/2)*np.cos(alpha) + (Ra/2)*np.sin(theta_i2) + cx
+    ybi2 = (Ra/2)*np.sin(alpha) - (Ra/2)*np.cos(theta_i2) + cy
 
     boundary = []
     boundary.append([xbo1, ybo1])
@@ -211,11 +214,31 @@ def fpr(
     boundary.extend(pti)
     boundary.append([xbi2, ybi2])
 
-    FPR.add_polygon(boundary, layer=layer)
+    c.add_polygon(boundary, layer=layer)
     
-    return FPR
+    return c, ports
 
 
 if __name__ == "__main__":
-    FPR = fpr(inputs=16, rotation_angle=0)
-    FPR.show()
+    c = gf.Component()
+    FPR, ports= fpr(
+        inputs=16,
+        outputs=32,
+        rotation_angle=45,
+        # Ra=300,
+        # do=6,
+        # di=6,
+    )
+    FPR_ref = c << FPR
+    FPR_ref.mirror(p1=(400, 0), p2=(400, 100))
+    FPR2, ports2= fpr(
+        inputs=16,
+        outputs=32,
+        rotation_angle=45,
+        # Ra=300,
+        # do=6,
+        # di=6,
+    )
+    c.add_ref(FPR2)
+    c.show()
+    print(ports[0][0])
